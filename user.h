@@ -10,7 +10,12 @@
 #include <QHostAddress>
 #include <QTime>
 #include <QTimer>
-
+#include <QLabel>
+#include <QPushButton>
+#include <QTextEdit>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QLayout>
 namespace Ui {
 class User;
 }
@@ -20,21 +25,18 @@ class User : public QDialog
     Q_OBJECT
 
 public:
-    explicit User(uint ID,
-                  QHostAddress Adress,
-                  uint Port,
-                  QString name,
-                  QObject *parent = 0);
+    explicit User(QDialog *parent = 0);
     ~User();
-    bool connect();
+private slots:
+    bool connectToServer();
     void disconnect();
+    bool parse_message(QByteArray message);
     void ping_server();
-    void send_Datagramm();
+    //void send_Datagramm();
     void receive_Datagramm();
 
 
 private:
-    uint ID;
     QHostAddress Address;
     QHostAddress AddressServer;
     uint Port;
@@ -44,6 +46,17 @@ private:
     QUdpSocket *socket_Out;
     QUdpSocket *socket_In;
     QByteArray MSG;
+    QTimer *timePing;
+
+    QMessageBox *initDialog;
+    QLabel *dialog;
+    QTextEdit *msg;
+    QPushButton *send;
+    QPushButton *close;
+
+    QLineEdit *name_lineEdit;
+    QLineEdit *adr_lineEdit;
+    QLineEdit *port_lineEdit;
     Ui::User *ui;
 };
 
