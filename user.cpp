@@ -15,10 +15,63 @@ User::User(QDialog *parent) :
     QDialog(parent),
     ui(new Ui::User)
 {
+    QTime midnight(0,0,0);
+    qsrand(midnight.secsTo(QTime::currentTime()));
+    Port = qrand()%99999 - 10000;
+
+    socket_Out = new QUdpSocket(this);
+    socket_In = new QUdpSocket(this);
+
     timePing = new QTimer(this);
     timePing->setInterval(60000);
+
     initDialog = new QMessageBox(this);
     connectToServer();
+
+    dialogLabel = new QLabel(this);
+    msgText= new QTextEdit(this);
+
+
+    // buttons
+    sendButton = new QPushButton(this);
+    closeButton = new QPushButton(this);
+    sendButton->setToolTip("Send message");
+    closeButton->setToolTip("Close chat");
+    sendButton->setText("Send Message");
+    closeButton->setText("Close chat");
+
+    connect(sendButton, SIGNAL(clicked()), this, SLOT(send_Datagramm()));
+    connect(closeButton, SIGNAL(clicked()), this, SLOT(close()));
+    //sendButton->setToolTipDuration(800);
+
+    // label
+    dialogLabel->setText("Sas");
+
+    //testEdit
+    msgText = new QTextEdit(this);
+    msgText->setText("Pisos");
+
+    QVBoxLayout *sendLayout = new QVBoxLayout;
+    sendLayout->addWidget(sendButton);
+
+    QVBoxLayout *closeLayout = new QVBoxLayout;
+    closeLayout->addWidget( closeButton);
+
+    QVBoxLayout *dialogLayout = new QVBoxLayout;
+    dialogLayout->addWidget(dialogLabel);
+
+    QVBoxLayout *msgLayout = new QVBoxLayout;
+    msgLayout->addWidget(msgText);
+
+
+    QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addLayout(sendLayout);
+    mainLayout->addLayout(closeLayout);
+    mainLayout->addLayout(dialogLayout);
+    mainLayout->addLayout(msgLayout);
+
+    this->setLayout(mainLayout);
+    //setWindowTitle("Dialog");
     ui->setupUi(this);
 }
 
@@ -26,32 +79,86 @@ User::~User()
 {
     delete socket_Out;
     delete socket_In;
-
+    delete initDialog;
+    delete dialogLabel;
+    delete msgText;
+    delete sendButton;
+    delete closeButton;
     delete ui;
 }
 
 bool User :: connectToServer()
 {
     initDialog->setText("Подключение к чату");
-    name_lineEdit = new QLineEdit(this);
+
+    QLineEdit *name_lineEdit = new QLineEdit(this);
+    QLineEdit *host1_lineEdit = new QLineEdit(this);
+    QLineEdit *host2_lineEdit = new QLineEdit(this);
+    QLineEdit *host3_lineEdit = new QLineEdit(this);
+    QLineEdit *host4_lineEdit = new QLineEdit(this);
+    QLineEdit *port_lineEdit = new QLineEdit(this);
+
     initDialog->layout()->addWidget(name_lineEdit);
-    //name_lineEdit
+    initDialog->layout()->addWidget(host1_lineEdit);
+    initDialog->layout()->addWidget(host2_lineEdit);
+    initDialog->layout()->addWidget(host3_lineEdit);
+    initDialog->layout()->addWidget(host4_lineEdit);
+    initDialog->layout()->addWidget(port_lineEdit);
+
+
+
+
     initDialog->setStandardButtons(QMessageBox::Close);
     QPushButton *connectButton = initDialog->addButton("Connect", QMessageBox::ActionRole);
     connectButton->setFocusPolicy(Qt::StrongFocus);
     initDialog->exec();
 
+
     if (initDialog->clickedButton() == connectButton)
     {
-        socket_Out = new QUdpSocket(this);
+        Name = name_lineEdit->text();
+        PortServer = port_lineEdit->text().toUInt();
+
+        if (host1_lineEdit->text().toUInt() <= 255 &&
+                host2_lineEdit->text().toUInt() <= 255 &&
+                host3_lineEdit->text().toUInt() <=255 &&
+                host4_lineEdit->text().toUInt() <=255 )
+        {
+            AddressServer = QHostAddress(host1_lineEdit->text() + "." +
+                                         host2_lineEdit->text() + "." +
+                                         host3_lineEdit->text() + "." +
+                                         host4_lineEdit->text());
+        }
+        else
+        {
+            delete name_lineEdit;
+            delete host1_lineEdit;
+            delete host2_lineEdit;
+            delete host3_lineEdit;
+            delete host4_lineEdit;
+            delete port_lineEdit ;
+            return false;
+        }
         socket_Out->bind(QHostAddress::Any, Port);
         QByteArray datagram =  userInit + separator + QByteArray(Name.toUtf8()) + separator
              + QByteArray::number(Port);
         socket_Out->writeDatagram(datagram.data(), datagram.size(), AddressServer, PortServer);
         connected = false;
+        delete name_lineEdit;
+        delete host1_lineEdit;
+        delete host2_lineEdit;
+        delete host3_lineEdit;
+        delete host4_lineEdit;
+        delete port_lineEdit ;
         return true;
     }
     else
+        delete name_lineEdit;
+        delete host1_lineEdit;
+        delete host2_lineEdit;
+        delete host3_lineEdit;
+        delete host4_lineEdit;
+        delete port_lineEdit ;
         return false;
 }
 
@@ -111,12 +218,24 @@ void  User :: ping_server()
 
 }
 
-/*void User :: send_Datagramm(QByteArray MSG)
+void User :: send_Datagramm()
 {
-   // socket_Out->writeDatagram(datagram.data(), datagram.size(), AddressServer, PortServer);
-}*/
+   if (msgText->toPlainText() != separator)
+   {
+        QByteArray datagram = msgToUser + separator + QByteArray(msgText->toPlainText().toUtf8()) ;
+        socket_Out->writeDatagram(datagram.data(), datagram.size(), AddressServer, PortServer);
+        msgText->clear();
+   }
+   else
+       msgText->setText("LOL");
+       //QMessageBox *separatorMSG = new QMessageBox(this);
+
+
+}
 
 void  User :: receive_Datagramm()
 {
+    QByteArray datagram;
+    socket_In->readDatagram(datagram.data(), datagram.size());
 
 }

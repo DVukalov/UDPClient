@@ -32,12 +32,13 @@ private slots:
     void disconnect();
     bool parse_message(QByteArray message);
     void ping_server();
-    //void send_Datagramm();
+    void send_Datagramm();
     void receive_Datagramm();
+    //void print_message();
 
 
 private:
-    QHostAddress Address;
+    //QHostAddress Address;
     QHostAddress AddressServer;
     uint Port;
     uint PortServer;
@@ -49,14 +50,14 @@ private:
     QTimer *timePing;
 
     QMessageBox *initDialog;
-    QLabel *dialog;
-    QTextEdit *msg;
-    QPushButton *send;
-    QPushButton *close;
+    QLabel *dialogLabel;
+    QTextEdit *msgText;
+    QPushButton *sendButton;
+    QPushButton *closeButton;
 
-    QLineEdit *name_lineEdit;
-    QLineEdit *adr_lineEdit;
-    QLineEdit *port_lineEdit;
+    //QLineEdit *name_lineEdit;
+    //QLineEdit *adr_lineEdit;
+    //QLineEdit *port_lineEdit;
     Ui::User *ui;
 };
 
