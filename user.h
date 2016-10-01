@@ -34,6 +34,7 @@ private slots:
     void ping_server();
     void send_Datagramm();
     void receive_Datagramm();
+    void errorRegistration();
     //void print_message();
 
 
@@ -48,6 +49,7 @@ private:
     QUdpSocket *socket_In;
     QByteArray MSG;
     QTimer *timePing;
+    QTimer * timeRegistration;
 
     QMessageBox *initDialog;
     QLabel *dialogLabel;

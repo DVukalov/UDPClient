@@ -9,7 +9,15 @@ namespace
     const QByteArray msgToUser = "MSG";
     const QByteArray pingUser = "PING";
     const QByteArray separator = "#@#"; //???
+    const QByteArray errorMsg = "ERROR";
+    enum Errors
+    {
+        eName = 1,
+        eFault = 2
+    };
 }
+
+
 
 User::User(QDialog *parent) :
     QDialog(parent),
@@ -17,10 +25,15 @@ User::User(QDialog *parent) :
 {
     QTime midnight(0,0,0);
     qsrand(midnight.secsTo(QTime::currentTime()));
-    Port = qrand()%99999 - 10000;
+    Port = qrand()%9999 + 10000;
 
     socket_Out = new QUdpSocket(this);
     socket_In = new QUdpSocket(this);
+
+    timeRegistration = new QTimer(this);
+    timeRegistration->setInterval(3000);
+
+    connect(timeRegistration, SIGNAL(timeout()), SLOT(errorRegistration()));
 
     timePing = new QTimer(this);
     timePing->setInterval(60000);
@@ -137,29 +150,36 @@ bool User :: connectToServer()
             delete host3_lineEdit;
             delete host4_lineEdit;
             delete port_lineEdit ;
+            delete connectButton;
             return false;
         }
-        socket_Out->bind(QHostAddress::Any, Port);
         QByteArray datagram =  userInit + separator + QByteArray(Name.toUtf8()) + separator
              + QByteArray::number(Port);
         socket_Out->writeDatagram(datagram.data(), datagram.size(), AddressServer, PortServer);
+        socket_Out->bind(QHostAddress::Any, Port);
         connected = false;
+        timeRegistration->start();
+
         delete name_lineEdit;
         delete host1_lineEdit;
         delete host2_lineEdit;
         delete host3_lineEdit;
         delete host4_lineEdit;
         delete port_lineEdit ;
+        delete connectButton;
         return true;
     }
     else
+    {
         delete name_lineEdit;
         delete host1_lineEdit;
         delete host2_lineEdit;
         delete host3_lineEdit;
         delete host4_lineEdit;
-        delete port_lineEdit ;
+        delete port_lineEdit;
+        delete connectButton;
         return false;
+    }
 }
 
 bool User:: parse_message(QByteArray message)
@@ -168,6 +188,8 @@ bool User:: parse_message(QByteArray message)
     {
         connected = true;
         timePing->start();
+//        ui->setupUi(this);
+        this->show();
         return true;
     }
     if (message.startsWith(pingUser))
@@ -175,6 +197,34 @@ bool User:: parse_message(QByteArray message)
         timePing->stop();
         timePing->start();
         return true;
+    }
+    if(message.startsWith(errorMsg))
+    {
+        socket_Out->close();
+        QByteArray buf;
+        int index;
+        message.remove(0, ::errorMsg.size() + ::separator.size());
+        index = message.indexOf(::separator);
+
+        qCopy(message.begin(), message.begin() + index, buf.begin());
+        if (buf.toInt() == eName)
+        {
+            QMessageBox *msgBox = new QMessageBox(this);
+            msgBox->setStandardButtons(QMessageBox::Close);
+            msgBox->setText("Errors Name");
+            msgBox->exec();
+            delete msgBox;
+            connectToServer();
+        }
+        if (buf.toInt() == eFault)
+        {
+            QMessageBox *msgBox = new QMessageBox(this);
+            msgBox->setStandardButtons(QMessageBox::Close);
+            msgBox->setText("Errors Server");
+            msgBox->exec();
+            delete msgBox;
+            connectToServer();
+        }
     }
     if (message.startsWith(msgToUser))
     {
@@ -186,6 +236,7 @@ bool User:: parse_message(QByteArray message)
             __print << "Wrong message";
             return false;
         }
+
         message.remove(0, ::msgToUser.size() + ::separator.size());
         index = message.indexOf(::separator);
 
@@ -210,6 +261,7 @@ bool User:: parse_message(QByteArray message)
 void User :: disconnect()
 {
     socket_Out->close();
+    socket_In->close();
     connected = false;
 }
 
@@ -222,7 +274,9 @@ void User :: send_Datagramm()
 {
    if (msgText->toPlainText() != separator)
    {
-        QByteArray datagram = msgToUser + separator + QByteArray(msgText->toPlainText().toUtf8()) ;
+        QByteArray datagram = msgToUser + separator + QByteArray(Name.toUtf8()) + separator
+                + QByteArray(msgText->toPlainText().toUtf8());
+
         socket_Out->writeDatagram(datagram.data(), datagram.size(), AddressServer, PortServer);
         msgText->clear();
    }
@@ -237,5 +291,22 @@ void  User :: receive_Datagramm()
 {
     QByteArray datagram;
     socket_In->readDatagram(datagram.data(), datagram.size());
+    dialogLabel->setText(datagram.trimmed());
+
+}
+void User :: errorRegistration()
+{
+    QMessageBox *msgBox = new QMessageBox(this);
+
+    msgBox->setText("TimeOUT");
+    QPushButton *okButton = msgBox->addButton("OK", QMessageBox::ActionRole);
+    okButton->setFocusPolicy(Qt::StrongFocus);
+    msgBox->exec();
+    if (msgBox->clickedButton() == okButton)
+    {
+        connectToServer();
+    }
+    delete msgBox;
+
 
 }
