@@ -51,7 +51,9 @@ private:
     QTimer *timePing;
     QTimer * timeRegistration;
 
-    QMessageBox *initDialog;
+    QDialog * inputDialog;
+
+    //QMessageBox *initDialog;
     QLabel *dialogLabel;
     QTextEdit *msgText;
     QPushButton *sendButton;
