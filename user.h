@@ -28,7 +28,7 @@ public:
     explicit User(QDialog *parent = 0);
     ~User();
 private slots:
-    bool connectToServer();
+    int connectToServer();
     void disconnect();
     bool parse_message(QByteArray message);
     void ping_server();
@@ -47,7 +47,7 @@ private:
     bool connected;
     QUdpSocket *socket_Out;
     QUdpSocket *socket_In;
-    QByteArray MSG;
+    QByteArray *MSG;
     QTimer *timePing;
     QTimer * timeRegistration;
 
@@ -59,9 +59,10 @@ private:
     QPushButton *sendButton;
     QPushButton *closeButton;
 
-    //QLineEdit *name_lineEdit;
-    //QLineEdit *adr_lineEdit;
-    //QLineEdit *port_lineEdit;
+   /* QLineEdit *name_lineEdit;
+    QLineEdit *adr_lineEdit;
+    QLineEdit *port_lineEdit;*/
+
     Ui::User *ui;
 };
 

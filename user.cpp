@@ -31,6 +31,7 @@ User::User(QDialog *parent) :
     socket_Out = new QUdpSocket(this);
     socket_In = new QUdpSocket(this);
 
+    MSG = new QByteArray;
     timeRegistration = new QTimer(this);
     timeRegistration->setInterval(10000);
 
@@ -41,10 +42,11 @@ User::User(QDialog *parent) :
 
     inputDialog = new QDialog(this);
 
-    //initDialog = new QMessageBox(this);
-    if(!connectToServer())
+    //initDialog = new QMessageBox(this);  
+    if (connectToServer() == -1)
     {
-        // todo: обработать плохой коннект
+        this->close();
+
     }
 
     dialogLabel = new QLabel(this);
@@ -70,25 +72,22 @@ User::User(QDialog *parent) :
     msgText = new QTextEdit(this);
     msgText->setText("Pisos");
 
-    QVBoxLayout *sendLayout = new QVBoxLayout;
+    QHBoxLayout *sendLayout = new QHBoxLayout;
+    sendLayout->addWidget(msgText);
     sendLayout->addWidget(sendButton);
 
-    QVBoxLayout *closeLayout = new QVBoxLayout;
+    QHBoxLayout *closeLayout = new QHBoxLayout;
     closeLayout->addWidget( closeButton);
 
-    QVBoxLayout *dialogLayout = new QVBoxLayout;
+    QHBoxLayout *dialogLayout = new QHBoxLayout;
     dialogLayout->addWidget(dialogLabel);
 
-    QVBoxLayout *msgLayout = new QVBoxLayout;
-    msgLayout->addWidget(msgText);
 
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addLayout(dialogLayout);
     mainLayout->addLayout(sendLayout);
     mainLayout->addLayout(closeLayout);
-    mainLayout->addLayout(dialogLayout);
-    mainLayout->addLayout(msgLayout);
-
     this->setLayout(mainLayout);
     setWindowTitle("Client");
     ui->setupUi(this);
@@ -100,7 +99,11 @@ User::~User()
     __print;
     delete socket_Out;
     delete socket_In;
-    //delete initDialog;
+    delete MSG;
+    delete timePing;
+    delete timeRegistration;
+
+    //QMessageBox *initDialog;
     delete dialogLabel;
     delete msgText;
     delete sendButton;
@@ -108,8 +111,9 @@ User::~User()
     delete ui;
 }
 
-bool User :: connectToServer()
+int User :: connectToServer()
 {
+
     __print;
     //initDialog->setText("Подключение к чату");
     inputDialog->setWindowTitle("Registration");
@@ -122,25 +126,25 @@ bool User :: connectToServer()
     QLineEdit *port_lineEdit = new QLineEdit(this);
 
     QLabel *nameLabel = new QLabel(this);
-    QLabel *hostLabel = new QLabel(this);
-    QLabel *portLabel = new QLabel(this);
     QLabel *point1Label = new QLabel(this);
     QLabel *point2Label = new QLabel(this);
     QLabel *point3Label = new QLabel(this);
+    QLabel *portLabel = new QLabel(this);
     QLabel *helloLabel = new QLabel(this);
+    QLabel *hostLabel = new QLabel(this);
 
     nameLabel->setText("Name");
     hostLabel->setText("Address");
     portLabel->setText("Port");
+    helloLabel->setText("Hello");
     point1Label->setText(".");
     point2Label->setText(".");
     point3Label->setText(".");
-    helloLabel->setText("Hello");
 
-    QHBoxLayout *helloLayout = new QHBoxLayout(this);
+    QHBoxLayout *helloLayout = new QHBoxLayout;
     helloLayout->addWidget(helloLabel);
 
-    QHBoxLayout *hostLayout = new QHBoxLayout(this);
+    QHBoxLayout *hostLayout = new QHBoxLayout;
     hostLayout->addWidget(hostLabel);
     hostLayout->addWidget(host1_lineEdit);
     hostLayout->addWidget(point1Label);
@@ -150,21 +154,23 @@ bool User :: connectToServer()
     hostLayout->addWidget(point3Label);
     hostLayout->addWidget(host4_lineEdit);
 
-    QHBoxLayout *portLayout = new QHBoxLayout(this);
+    QHBoxLayout *portLayout = new QHBoxLayout;
     portLayout->addWidget(portLabel);
     portLayout->addWidget(port_lineEdit);
 
-    QHBoxLayout *nameLayout = new QHBoxLayout(this);
+    QHBoxLayout *nameLayout = new QHBoxLayout;
     nameLayout->addWidget(nameLabel);
     nameLayout->addWidget(name_lineEdit);
 
     QPushButton *connectBut = new QPushButton;
     connectBut->setText("Connect");
-    connectBut->setFocusPolicy(Qt::StrongFocus);
+    //connectBut->setFocusPolicy(Qt::StrongFocus);
 
     QPushButton *closeBut = new QPushButton;
     closeBut->setText("Close");
-    connect(closeBut, SIGNAL(clicked()), this, SLOT(close()));
+
+
+
 
     QHBoxLayout *butLayout = new QHBoxLayout;
     butLayout->addWidget(connectBut);
@@ -178,28 +184,36 @@ bool User :: connectToServer()
     mainLayout->addLayout(butLayout);
 
     inputDialog->setLayout(mainLayout);
-    inputDialog->exec();
-    /*initDialog->layout()->addWidget(name_lineEdit);
-    initDialog->layout()->addWidget(host1_lineEdit);
-    initDialog->layout()->addWidget(host2_lineEdit);
-    initDialog->layout()->addWidget(host3_lineEdit);
-    initDialog->layout()->addWidget(host4_lineEdit);
-    initDialog->layout()->addWidget(port_lineEdit);
+    connect(closeBut, &QPushButton::clicked, this, [=](){
 
-
-    initDialog->setStandardButtons(QMessageBox::Close);
-    QPushButton *connectButton =
-            initDialog->addButton("Connect", QMessageBox::ActionRole);
-    connectButton->setFocusPolicy(Qt::StrongFocus);
-    initDialog->exec();*/
-
-
-
-    while(connectBut->isDown() == false)
-    {
-        __print << "sas";
-    };
         inputDialog->close();
+        delete name_lineEdit;
+        delete host1_lineEdit;
+        delete host2_lineEdit;
+        delete host3_lineEdit;
+        delete host4_lineEdit;
+        delete port_lineEdit;
+        delete nameLabel;
+        delete hostLabel;
+        delete portLabel;
+        delete point1Label;
+        delete point2Label;
+        delete point3Label;
+        delete helloLabel;
+        delete helloLayout;
+        delete hostLayout;
+        delete portLayout ;
+        delete nameLayout;
+        delete connectBut;
+        delete closeBut;
+        delete butLayout;
+        delete mainLayout;
+        return -1;
+
+    });
+    connect(connectBut, &QPushButton::clicked, [=](){
+
+        __print<<"Lambda";
         if (!(host1_lineEdit->text().isEmpty() ||
               host2_lineEdit->text().isEmpty() ||
               host3_lineEdit->text().isEmpty() ||
@@ -209,10 +223,11 @@ bool User :: connectToServer()
                 host1_lineEdit->text().toUInt() <= 255 &&
                 host2_lineEdit->text().toUInt() <= 255 &&
                 host3_lineEdit->text().toUInt() <= 255 &&
-                host4_lineEdit->text().toUInt() <= 255 )
+                host4_lineEdit->text().toUInt() <= 255)
         {
-            Name = name_lineEdit->text();
-            PortServer = port_lineEdit->text().toUInt();
+            /*Name = name_lineEdit->text();
+            PortServer = port_lineEdit->text().toUInt();*/
+        __print<<"NORM host";
             AddressServer = QHostAddress(host1_lineEdit->text() + "." +
                                          host2_lineEdit->text() + "." +
                                          host3_lineEdit->text() + "." +
@@ -220,97 +235,157 @@ bool User :: connectToServer()
         }
         else
         {
-            delete name_lineEdit;
-            delete host1_lineEdit;
-            delete host2_lineEdit;
-            delete host3_lineEdit;
-            delete host4_lineEdit;
-            delete port_lineEdit;
-            delete nameLabel;
-            delete hostLabel;
-            delete portLabel;
-            delete point1Label;
-            delete point2Label;
-            delete point3Label;
-            delete helloLabel;
-            delete helloLayout;
-            delete hostLayout;
-            delete portLayout ;
-            delete nameLayout;
-            delete connectBut;
-            delete closeBut;
-            delete butLayout;
-            delete mainLayout;
-            connectToServer();
-            return false;
+            QMessageBox *erName = new QMessageBox;
+            erName->setStandardButtons(QMessageBox::Close);
+            erName->setText("Error Addres");
+            erName->exec();
+            if (erName->clickedButton())
+            {
+                delete erName;
+                delete name_lineEdit;
+                delete host1_lineEdit;
+                delete host2_lineEdit;
+                delete host3_lineEdit;
+                delete host4_lineEdit;
+                delete port_lineEdit;
+                delete nameLabel;
+                delete hostLabel;
+                delete portLabel;
+                delete point1Label;
+                delete point2Label;
+                delete point3Label;
+                delete helloLabel;
+                delete helloLayout;
+                delete hostLayout;
+                delete portLayout ;
+                delete nameLayout;
+                delete connectBut;
+                delete closeBut;
+                delete butLayout;
+                delete mainLayout;
+                connectToServer();
+            }
         }
-        QByteArray datagram =  userInit + separator
-                + QByteArray(Name.toUtf8()) + separator
-                + QByteArray::number(Port);
-        socket_Out->writeDatagram(datagram.data(), datagram.size(),
-                                  AddressServer, PortServer);
-        socket_In->bind(Port, QUdpSocket::ShareAddress);
-        connect(socket_In, SIGNAL(readyRead()),
-                this, SLOT(receive_Datagramm()));
-        connected = false;
+        if (name_lineEdit->text() != separator && !name_lineEdit->text().isEmpty())
+        {
+             __print<<"NORM name";
+                Name = name_lineEdit->text();
+        }
+        else
+            {
+                QMessageBox *erName = new QMessageBox;
+                erName->setStandardButtons(QMessageBox::Close);
+                erName->setText("Error Name");
+                erName->exec();
+                if (erName->clickedButton() )
+                {
+                    delete erName;
+                    delete name_lineEdit;
+                    delete host1_lineEdit;
+                    delete host2_lineEdit;
+                    delete host3_lineEdit;
+                    delete host4_lineEdit;
+                    delete port_lineEdit;
+                    delete nameLabel;
+                    delete hostLabel;
+                    delete portLabel;
+                    delete point1Label;
+                    delete point2Label;
+                    delete point3Label;
+                    delete helloLabel;
+                    delete helloLayout;
+                    delete hostLayout;
+                    delete portLayout ;
+                    delete nameLayout;
+                    delete connectBut;
+                    delete closeBut;
+                    delete butLayout;
+                    delete mainLayout;
+                    connectToServer();
+                }
+            }
+            bool ok;
+            if (port_lineEdit->text().toUInt(&ok,10))
+            {
+                __print<<"NORM port";
+                PortServer = port_lineEdit->text().toUInt();
+            }
+            else
+            {
+                QMessageBox *erName = new QMessageBox;
+                erName->setStandardButtons(QMessageBox::Close);
+                erName->setText("Error Port");
+                erName->exec();
+                if (erName->clickedButton())
+                {
+                    delete erName;
+                    delete name_lineEdit;
+                    delete host1_lineEdit;
+                    delete host2_lineEdit;
+                    delete host3_lineEdit;
+                    delete host4_lineEdit;
+                    delete port_lineEdit;
+                    delete nameLabel;
+                    delete hostLabel;
+                    delete portLabel;
+                    delete point1Label;
+                    delete point2Label;
+                    delete point3Label;
+                    delete helloLabel;
+                    delete helloLayout;
+                    delete hostLayout;
+                    delete portLayout ;
+                    delete nameLayout;
+                    delete connectBut;
+                    delete closeBut;
+                    delete butLayout;
+                    delete mainLayout;
+                    connectToServer();
+                }
+            }
+            QByteArray datagram =  userInit + separator
+                    + QByteArray(Name.toUtf8()) + separator
+                    + QByteArray::number(Port);
+            socket_Out->writeDatagram(datagram.data(), datagram.size(),
+                                      AddressServer, PortServer);
+            __print<<datagram;
+            socket_In->bind(Port, QUdpSocket::ShareAddress);
+            connect(socket_In, SIGNAL(readyRead()),
+                    this, SLOT(receive_Datagramm()));
+            connected = false;
+            timeRegistration->start();
+            });
+    inputDialog->exec();
+    delete name_lineEdit;
+    delete host1_lineEdit;
+    delete host2_lineEdit;
+    delete host3_lineEdit;
+    delete host4_lineEdit;
+    delete port_lineEdit;
+    delete nameLabel;
+    delete hostLabel;
+    delete portLabel;
+    delete point1Label;
+    delete point2Label;
+    delete point3Label;
+    delete helloLabel;
+    delete helloLayout;
+    delete hostLayout;
+    delete portLayout ;
+    delete nameLayout;
+    delete connectBut;
+    delete closeBut;
+    delete butLayout;
+    delete mainLayout;
 
-        timeRegistration->start();
 
-        delete name_lineEdit;
-        delete host1_lineEdit;
-        delete host2_lineEdit;
-        delete host3_lineEdit;
-        delete host4_lineEdit;
-        delete port_lineEdit;
-        delete nameLabel;
-        delete hostLabel;
-        delete portLabel;
-        delete point1Label;
-        delete point2Label;
-        delete point3Label;
-        delete helloLabel;
-        delete helloLayout;
-        delete hostLayout;
-        delete portLayout ;
-        delete nameLayout;
-        delete connectBut;
-        delete closeBut;
-        delete butLayout;
-        delete mainLayout;
-        return true;
-   /* }
-    else
-    {
-        delete name_lineEdit;
-        delete host1_lineEdit;
-        delete host2_lineEdit;
-        delete host3_lineEdit;
-        delete host4_lineEdit;
-        delete port_lineEdit;
-        delete nameLabel;
-        delete hostLabel;
-        delete portLabel;
-        delete point1Label;
-        delete point2Label;
-        delete point3Label;
-        delete helloLabel;
-        delete helloLayout;
-        delete hostLayout;
-        delete portLayout ;
-        delete nameLayout;
-        delete connectBut;
-        delete closeBut;
-        delete butLayout;
-        delete mainLayout;
-        return false;
-    }*/
 }
 
 
 
 bool User:: parse_message(QByteArray message)
 {
-    /*__print << message;
+    __print << message;
     if (message.startsWith(userInit))
     {
         connected = true;
@@ -345,8 +420,8 @@ bool User:: parse_message(QByteArray message)
             msgBox->exec();
             delete msgBox;
 
-            delete initDialog;
-            initDialog = new QMessageBox(this);
+            delete inputDialog;
+            inputDialog = new QMessageBox(this);
 
             connectToServer();
         }
@@ -358,8 +433,8 @@ bool User:: parse_message(QByteArray message)
             msgBox->exec();
             delete msgBox;
 
-            delete initDialog;
-            initDialog = new QMessageBox(this);
+            delete inputDialog;
+            inputDialog = new QMessageBox(this);
 
             connectToServer();
         }
@@ -386,14 +461,15 @@ bool User:: parse_message(QByteArray message)
         qCopy(message.begin(), message.end(), buf.begin());
         if (buf.data() == NULL)
         {
+            MSG = 0;
             __print << "Empty";
-            return false;
+
 
         }
         return false;
         ///TO DO ВЫвести
     }
-    return false;*/
+    return false;
 }
 
 void User :: disconnect()
@@ -452,8 +528,8 @@ void User :: errorRegistration()
 
     if (msgBox->clickedButton() == okButton)
     {
-        //delete initDialog;
-      //  initDialog = new QMessageBox(this);
+         delete inputDialog;
+         inputDialog = new QMessageBox(this);
         connectToServer();
     }
     __print<<"HARD PISOS!"<<timeRegistration->isActive();

@@ -20,3 +20,5 @@ SOURCES += main.cpp\
 HEADERS  += user.h
 
 FORMS    += user.ui
+
+QMAKE_CXXFLAGS += -std=c++11
