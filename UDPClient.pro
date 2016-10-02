@@ -15,7 +15,8 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        user.cpp
+    user2.cpp \
+    user.cpp
 
 HEADERS  += user.h
 

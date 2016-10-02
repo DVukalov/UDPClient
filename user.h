@@ -28,13 +28,14 @@ public:
     explicit User(QDialog *parent = 0);
     ~User();
 private slots:
-    int connectToServer();
+
     void disconnect();
     bool parse_message(QByteArray message);
-    void ping_server();
+
     void send_Datagramm();
     void receive_Datagramm();
-    void errorRegistration();
+    //void errorRegistration();
+    void initUser();
     //void print_message();
 
 
@@ -47,10 +48,11 @@ private:
     bool connected;
     QUdpSocket *socket_Out;
     QUdpSocket *socket_In;
-    QByteArray *MSG;
+    QString MSG;
     QTimer *timePing;
     QTimer * timeRegistration;
-
+    QPushButton * connectBut;
+    QPushButton * closeBut;
     QDialog * inputDialog;
 
     //QMessageBox *initDialog;
@@ -58,10 +60,14 @@ private:
     QTextEdit *msgText;
     QPushButton *sendButton;
     QPushButton *closeButton;
+    QLabel *Chat;
 
-   /* QLineEdit *name_lineEdit;
-    QLineEdit *adr_lineEdit;
-    QLineEdit *port_lineEdit;*/
+    QLineEdit * name_lineEdit ;
+    QLineEdit *host1_lineEdit ;
+    QLineEdit * host2_lineEdit ;
+    QLineEdit *host3_lineEdit ;
+    QLineEdit * host4_lineEdit ;
+    QLineEdit *port_lineEdit ;
 
     Ui::User *ui;
 };

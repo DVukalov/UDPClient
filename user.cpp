@@ -1,15 +1,15 @@
 #include "user.h"
 #include "ui_user.h"
-
-
 namespace
 {
      // Regular expressions for messages
     const QByteArray userInit = "INITUSER";
     const QByteArray msgToUser = "MSG";
     const QByteArray pingUser = "PING";
-    const QByteArray separator = "#@#"; //???
+    const QByteArray separator = "#@#";
     const QByteArray errorMsg = "ERROR";
+    const uint timeReg = 3000;
+    const uint timePNG = 60000;
     enum Errors
     {
         eName = 1,
@@ -17,135 +17,119 @@ namespace
     };
 }
 
-
-
 User::User(QDialog *parent) :
     QDialog(parent),
     ui(new Ui::User)
 {
     __print;
+    this->setFixedSize(400, 520);
     QTime midnight(0,0,0);
     qsrand(midnight.secsTo(QTime::currentTime()));
     Port = qrand()%9999 + 10000;
+    timePing = new QTimer(this);
+    timePing->setInterval(timePNG);
+
+    timeRegistration = new QTimer(this);
+    timeRegistration->setInterval(timeReg);
+
+
+    inputDialog = new QDialog(this);
+    inputDialog->setWindowFlags(Qt::CustomizeWindowHint|Qt::WindowTitleHint);
 
     socket_Out = new QUdpSocket(this);
     socket_In = new QUdpSocket(this);
 
-    MSG = new QByteArray;
-    timeRegistration = new QTimer(this);
-    timeRegistration->setInterval(10000);
+    name_lineEdit = new QLineEdit(this);
+    host1_lineEdit = new QLineEdit(this);
+    host2_lineEdit = new QLineEdit(this);
+    host3_lineEdit = new QLineEdit(this);
+    host4_lineEdit = new QLineEdit(this);
+    port_lineEdit = new QLineEdit(this);
 
-    connect(timeRegistration, SIGNAL(timeout()), SLOT(errorRegistration()));
-
-    timePing = new QTimer(this);
-    timePing->setInterval(60000);
-
-    inputDialog = new QDialog(this);
-
-    //initDialog = new QMessageBox(this);  
-    if (connectToServer() == -1)
-    {
-        this->close();
-
-    }
+    connectBut = new QPushButton("Connect",this);
+    closeBut = new QPushButton("Close",this);
 
     dialogLabel = new QLabel(this);
-    msgText= new QTextEdit(this);
+    dialogLabel->setFixedHeight(420);
 
+    Chat = new QLabel(this);
+    Chat->setText("Dialog");
+    Chat->setFont(QFont("Courier", 16,QFont::Bold));
+    Chat->setAlignment(Qt::AlignHCenter);
 
-    // buttons
-    sendButton = new QPushButton(this);
-    closeButton = new QPushButton(this);
-    sendButton->setToolTip("Send message");
-    closeButton->setToolTip("Close chat");
-    sendButton->setText("Send Message");
-    closeButton->setText("Close chat");
+    msgText = new QTextEdit("Write message...", this);
+    msgText->setFixedHeight(60);
 
+    sendButton = new QPushButton("Send", this);
+    closeButton = new QPushButton("Close", this);
+    closeButton->setFixedWidth(50);
+    connect(closeButton, SIGNAL(clicked()),this, SLOT(close()));
     connect(sendButton, SIGNAL(clicked()), this, SLOT(send_Datagramm()));
-    connect(closeButton, SIGNAL(clicked()), this, SLOT(close()));
-    //sendButton->setToolTipDuration(800);
+    //connect(msgText, SIGNAL(cursorPositionChanged()), msgText, SLOT(clear()));
 
-    // label
-    dialogLabel->setText("Sas");
+    QHBoxLayout *headLayout = new QHBoxLayout;
+    headLayout->addWidget(Chat);
+    headLayout->addWidget(closeButton);
 
-    //testEdit
-    msgText = new QTextEdit(this);
-    msgText->setText("Pisos");
+     QHBoxLayout *sendLayout = new QHBoxLayout;
+     sendLayout->addWidget(msgText);
+     sendLayout->addWidget(sendButton);
 
-    QHBoxLayout *sendLayout = new QHBoxLayout;
-    sendLayout->addWidget(msgText);
-    sendLayout->addWidget(sendButton);
+     QVBoxLayout * mainLayout = new QVBoxLayout;
+     mainLayout->addLayout(headLayout);
+     mainLayout->addWidget(dialogLabel);
+     mainLayout->addLayout(sendLayout);
 
-    QHBoxLayout *closeLayout = new QHBoxLayout;
-    closeLayout->addWidget( closeButton);
-
-    QHBoxLayout *dialogLayout = new QHBoxLayout;
-    dialogLayout->addWidget(dialogLabel);
+     this->setLayout(mainLayout);
 
 
 
-    QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addLayout(dialogLayout);
-    mainLayout->addLayout(sendLayout);
-    mainLayout->addLayout(closeLayout);
-    this->setLayout(mainLayout);
-    setWindowTitle("Client");
+
+
+
     ui->setupUi(this);
     this->setDisabled(true);
+
+    initUser();
 }
 
 User::~User()
 {
     __print;
-    delete socket_Out;
-    delete socket_In;
-    delete MSG;
-    delete timePing;
-    delete timeRegistration;
 
-    //QMessageBox *initDialog;
-    delete dialogLabel;
-    delete msgText;
-    delete sendButton;
-    delete closeButton;
+
+    //удалить дlineEdit
     delete ui;
 }
 
-int User :: connectToServer()
+
+void User::initUser()
 {
-
     __print;
-    //initDialog->setText("Подключение к чату");
-    inputDialog->setWindowTitle("Registration");
 
-    QLineEdit *name_lineEdit = new QLineEdit(this);
-    QLineEdit *host1_lineEdit = new QLineEdit(this);
-    QLineEdit *host2_lineEdit = new QLineEdit(this);
-    QLineEdit *host3_lineEdit = new QLineEdit(this);
-    QLineEdit *host4_lineEdit = new QLineEdit(this);
-    QLineEdit *port_lineEdit = new QLineEdit(this);
-
-    QLabel *nameLabel = new QLabel(this);
-    QLabel *point1Label = new QLabel(this);
-    QLabel *point2Label = new QLabel(this);
-    QLabel *point3Label = new QLabel(this);
-    QLabel *portLabel = new QLabel(this);
-    QLabel *helloLabel = new QLabel(this);
-    QLabel *hostLabel = new QLabel(this);
-
-    nameLabel->setText("Name");
-    hostLabel->setText("Address");
-    portLabel->setText("Port");
-    helloLabel->setText("Hello");
-    point1Label->setText(".");
-    point2Label->setText(".");
-    point3Label->setText(".");
+    inputDialog = new QDialog(this);
+    inputDialog->setFixedSize(275,150);
+    inputDialog->setWindowFlags(inputDialog->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    inputDialog->setWindowFlags(inputDialog->windowFlags() & ~Qt::WindowCloseButtonHint);
+    QLabel *nameLabel = new QLabel("Name",this);
+    QLabel *point1Label = new QLabel(".",this);
+    QLabel *point2Label = new QLabel(".",this);
+    QLabel *point3Label = new QLabel(".",this);
+    QLabel *portLabel = new QLabel("Port",this);
+    QLabel *helloLabel = new QLabel("Hello",this);
+    helloLabel->setFont(QFont("Courier", 16,QFont::Bold));
+    helloLabel->setAlignment(Qt::AlignHCenter);
+    QLabel *hostLabel = new QLabel("Host",this);
 
     QHBoxLayout *helloLayout = new QHBoxLayout;
     helloLayout->addWidget(helloLabel);
 
+    QVBoxLayout *labelLayout = new QVBoxLayout;
+    labelLayout->addWidget(hostLabel);
+    labelLayout->addWidget(portLabel);
+    labelLayout->addWidget(nameLabel);
+
     QHBoxLayout *hostLayout = new QHBoxLayout;
-    hostLayout->addWidget(hostLabel);
     hostLayout->addWidget(host1_lineEdit);
     hostLayout->addWidget(point1Label);
     hostLayout->addWidget(host2_lineEdit);
@@ -154,22 +138,17 @@ int User :: connectToServer()
     hostLayout->addWidget(point3Label);
     hostLayout->addWidget(host4_lineEdit);
 
-    QHBoxLayout *portLayout = new QHBoxLayout;
-    portLayout->addWidget(portLabel);
-    portLayout->addWidget(port_lineEdit);
-
-    QHBoxLayout *nameLayout = new QHBoxLayout;
-    nameLayout->addWidget(nameLabel);
-    nameLayout->addWidget(name_lineEdit);
-
-    QPushButton *connectBut = new QPushButton;
-    connectBut->setText("Connect");
-    //connectBut->setFocusPolicy(Qt::StrongFocus);
-
-    QPushButton *closeBut = new QPushButton;
-    closeBut->setText("Close");
+    QVBoxLayout *lineLayout = new QVBoxLayout;
+    lineLayout->addLayout(hostLayout);
+    lineLayout->addWidget(port_lineEdit);
+    lineLayout->addWidget(name_lineEdit);
 
 
+    QHBoxLayout *faceLayout = new QHBoxLayout;
+    faceLayout->addLayout(labelLayout);
+    faceLayout->addLayout(lineLayout);
+
+    connectBut->setFocusPolicy(Qt::StrongFocus);
 
 
     QHBoxLayout *butLayout = new QHBoxLayout;
@@ -178,56 +157,49 @@ int User :: connectToServer()
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addLayout(helloLayout);
-    mainLayout->addLayout(hostLayout);
-    mainLayout->addLayout(portLayout);
-    mainLayout->addLayout(nameLayout);
+    mainLayout->addLayout(faceLayout);
     mainLayout->addLayout(butLayout);
 
     inputDialog->setLayout(mainLayout);
-    connect(closeBut, &QPushButton::clicked, this, [=](){
 
-        inputDialog->close();
-        delete name_lineEdit;
-        delete host1_lineEdit;
-        delete host2_lineEdit;
-        delete host3_lineEdit;
-        delete host4_lineEdit;
-        delete port_lineEdit;
-        delete nameLabel;
-        delete hostLabel;
-        delete portLabel;
-        delete point1Label;
-        delete point2Label;
-        delete point3Label;
-        delete helloLabel;
-        delete helloLayout;
-        delete hostLayout;
-        delete portLayout ;
-        delete nameLayout;
-        delete connectBut;
-        delete closeBut;
-        delete butLayout;
-        delete mainLayout;
-        return -1;
+    connect(timeRegistration, &QTimer::timeout, this, [this] ()
+    {
+        __print;
+        QMessageBox *msgBox = new QMessageBox;
+
+        timeRegistration->stop();
+        socket_In->close();
+
+        msgBox->setText("Connection timeout!");
+        msgBox->setIcon(QMessageBox::Warning);
+        msgBox->exec();
+
+        connectBut->setEnabled(true);
+        connectBut->setFocusPolicy(Qt::StrongFocus);
+        delete msgBox;
+
 
     });
-    connect(connectBut, &QPushButton::clicked, [=](){
 
-        __print<<"Lambda";
-        if (!(host1_lineEdit->text().isEmpty() ||
-              host2_lineEdit->text().isEmpty() ||
-              host3_lineEdit->text().isEmpty() ||
-              host4_lineEdit->text().isEmpty() ||
-              name_lineEdit->text().isEmpty() ||
-              port_lineEdit->text().isEmpty()) &&
-                host1_lineEdit->text().toUInt() <= 255 &&
-                host2_lineEdit->text().toUInt() <= 255 &&
-                host3_lineEdit->text().toUInt() <= 255 &&
-                host4_lineEdit->text().toUInt() <= 255)
+    connect(closeBut, &QPushButton::clicked, this, [this]()
+    {
+        this->inputDialog->close();
+
+    });
+
+    connect(connectBut, &QPushButton::clicked, this, [this]()
+    {
+        connectBut->setDisabled(true);
+        __print;
+        bool ok1, ok2, ok3, ok4, ok5, OK = true;
+        host1_lineEdit->text().toUInt(&ok1);
+        host2_lineEdit->text().toUInt(&ok2);
+        host3_lineEdit->text().toUInt(&ok3);
+        host4_lineEdit->text().toUInt(&ok4);
+        port_lineEdit->text().toUInt(&ok5);
+        if (ok1 && ok2 && ok3 && ok4)
         {
-            /*Name = name_lineEdit->text();
-            PortServer = port_lineEdit->text().toUInt();*/
-        __print<<"NORM host";
+            __print<<"NORM host";
             AddressServer = QHostAddress(host1_lineEdit->text() + "." +
                                          host2_lineEdit->text() + "." +
                                          host3_lineEdit->text() + "." +
@@ -235,173 +207,104 @@ int User :: connectToServer()
         }
         else
         {
-            QMessageBox *erName = new QMessageBox;
-            erName->setStandardButtons(QMessageBox::Close);
-            erName->setText("Error Addres");
-            erName->exec();
-            if (erName->clickedButton())
-            {
-                delete erName;
-                delete name_lineEdit;
-                delete host1_lineEdit;
-                delete host2_lineEdit;
-                delete host3_lineEdit;
-                delete host4_lineEdit;
-                delete port_lineEdit;
-                delete nameLabel;
-                delete hostLabel;
-                delete portLabel;
-                delete point1Label;
-                delete point2Label;
-                delete point3Label;
-                delete helloLabel;
-                delete helloLayout;
-                delete hostLayout;
-                delete portLayout ;
-                delete nameLayout;
-                delete connectBut;
-                delete closeBut;
-                delete butLayout;
-                delete mainLayout;
-                connectToServer();
-            }
+            OK = false;
+            QMessageBox *erHost = new QMessageBox;
+            erHost->setText("Wrong Host!");
+            erHost->setIcon(QMessageBox::Warning);
+            erHost->exec();
+            delete erHost;
         }
-        if (name_lineEdit->text() != separator && !name_lineEdit->text().isEmpty())
+        if (ok5)
         {
-             __print<<"NORM name";
-                Name = name_lineEdit->text();
+            __print << "Norm Port";
+            PortServer = port_lineEdit->text().toUInt();
         }
         else
-            {
-                QMessageBox *erName = new QMessageBox;
-                erName->setStandardButtons(QMessageBox::Close);
-                erName->setText("Error Name");
-                erName->exec();
-                if (erName->clickedButton() )
-                {
-                    delete erName;
-                    delete name_lineEdit;
-                    delete host1_lineEdit;
-                    delete host2_lineEdit;
-                    delete host3_lineEdit;
-                    delete host4_lineEdit;
-                    delete port_lineEdit;
-                    delete nameLabel;
-                    delete hostLabel;
-                    delete portLabel;
-                    delete point1Label;
-                    delete point2Label;
-                    delete point3Label;
-                    delete helloLabel;
-                    delete helloLayout;
-                    delete hostLayout;
-                    delete portLayout ;
-                    delete nameLayout;
-                    delete connectBut;
-                    delete closeBut;
-                    delete butLayout;
-                    delete mainLayout;
-                    connectToServer();
-                }
-            }
-            bool ok;
-            if (port_lineEdit->text().toUInt(&ok,10))
-            {
-                __print<<"NORM port";
-                PortServer = port_lineEdit->text().toUInt();
-            }
-            else
-            {
-                QMessageBox *erName = new QMessageBox;
-                erName->setStandardButtons(QMessageBox::Close);
-                erName->setText("Error Port");
-                erName->exec();
-                if (erName->clickedButton())
-                {
-                    delete erName;
-                    delete name_lineEdit;
-                    delete host1_lineEdit;
-                    delete host2_lineEdit;
-                    delete host3_lineEdit;
-                    delete host4_lineEdit;
-                    delete port_lineEdit;
-                    delete nameLabel;
-                    delete hostLabel;
-                    delete portLabel;
-                    delete point1Label;
-                    delete point2Label;
-                    delete point3Label;
-                    delete helloLabel;
-                    delete helloLayout;
-                    delete hostLayout;
-                    delete portLayout ;
-                    delete nameLayout;
-                    delete connectBut;
-                    delete closeBut;
-                    delete butLayout;
-                    delete mainLayout;
-                    connectToServer();
-                }
-            }
-            QByteArray datagram =  userInit + separator
+        {
+            OK = false;
+            QMessageBox *erHost = new QMessageBox;
+            erHost->setText("Wrong Port!");
+            erHost->setIcon(QMessageBox::Warning);
+            erHost->exec();
+            delete erHost;
+        }
+        if (!name_lineEdit->text().isEmpty() &&
+                !name_lineEdit->text().contains(::separator))
+        {
+            Name = name_lineEdit->text();
+        }
+        else if (name_lineEdit->text().contains(::separator))
+        {
+            OK = false;
+            QMessageBox *erHost = new QMessageBox;
+            erHost->setText(tr("Name contains illegual symbol %1!")
+                            .arg(separator.data()));
+            erHost->setIcon(QMessageBox::Warning);
+            erHost->exec();
+
+        }
+        else
+        {
+            OK = false;
+            QMessageBox *erHost = new QMessageBox;
+            erHost->setText("Empty name!");
+            erHost->setIcon(QMessageBox::Warning);
+            erHost->exec();
+            delete erHost;
+        }
+        if (OK)
+        {
+            QByteArray datagram =  ::userInit + separator
                     + QByteArray(Name.toUtf8()) + separator
                     + QByteArray::number(Port);
-            socket_Out->writeDatagram(datagram.data(), datagram.size(),
-                                      AddressServer, PortServer);
-            __print<<datagram;
             socket_In->bind(Port, QUdpSocket::ShareAddress);
             connect(socket_In, SIGNAL(readyRead()),
                     this, SLOT(receive_Datagramm()));
+            socket_Out->writeDatagram(datagram.data(), datagram.size(),
+                                      AddressServer, PortServer);
             connected = false;
             timeRegistration->start();
-            });
+        }
+        else
+        {
+            connectBut->setEnabled(true);
+            connectBut->setFocusPolicy(Qt::StrongFocus);
+
+        }
+    });
     inputDialog->exec();
-    delete name_lineEdit;
-    delete host1_lineEdit;
-    delete host2_lineEdit;
-    delete host3_lineEdit;
-    delete host4_lineEdit;
-    delete port_lineEdit;
-    delete nameLabel;
-    delete hostLabel;
-    delete portLabel;
-    delete point1Label;
-    delete point2Label;
-    delete point3Label;
-    delete helloLabel;
-    delete helloLayout;
-    delete hostLayout;
-    delete portLayout ;
-    delete nameLayout;
-    delete connectBut;
-    delete closeBut;
-    delete butLayout;
-    delete mainLayout;
 
-
+    delete inputDialog;
+    inputDialog = NULL;
 }
 
 
-
-bool User:: parse_message(QByteArray message)
+bool User :: parse_message(QByteArray message)
 {
-    __print << message;
+__print << message;
     if (message.startsWith(userInit))
     {
+        __print;
         connected = true;
         timePing->start();
         timeRegistration->stop();
+        inputDialog->close();
         this->setEnabled(true);
+        this->show();
+        __print<<this->isActiveWindow()<<this->isEnabled();
+
         return true;
     }
     if (message.startsWith(pingUser))
     {
+        __print;
         timePing->stop();
         timePing->start();
         return true;
     }
     if(message.startsWith(errorMsg))
     {
+        __print;
         socket_In->close();
         QByteArray buf;
         int index;
@@ -416,27 +319,24 @@ bool User:: parse_message(QByteArray message)
         {
             QMessageBox *msgBox = new QMessageBox(this);
             msgBox->setStandardButtons(QMessageBox::Close);
-            msgBox->setText("Errors Name");
+            msgBox->setText("Duplicate name!");
+            msgBox->setIcon(QMessageBox::Warning);
             msgBox->exec();
             delete msgBox;
-
-            delete inputDialog;
-            inputDialog = new QMessageBox(this);
-
-            connectToServer();
         }
         if (buf.toInt() == eFault)
         {
             QMessageBox *msgBox = new QMessageBox(this);
             msgBox->setStandardButtons(QMessageBox::Close);
-            msgBox->setText("Errors Server");
+            msgBox->setText("Server Fatal!");
+            msgBox->setIcon(QMessageBox::Critical);
             msgBox->exec();
+            inputDialog->show();
+            this->setDisabled(true);
+            inputDialog->show();
+            inputDialog->setEnabled(true);
             delete msgBox;
 
-            delete inputDialog;
-            inputDialog = new QMessageBox(this);
-
-            connectToServer();
         }
     }
     if (message.startsWith(msgToUser))
@@ -461,34 +361,47 @@ bool User:: parse_message(QByteArray message)
         qCopy(message.begin(), message.end(), buf.begin());
         if (buf.data() == NULL)
         {
-            MSG = 0;
             __print << "Empty";
-
+            return false;
 
         }
-        return false;
-        ///TO DO ВЫвести
+        MSG = QString(buf.data());
+        dialogLabel->setText(dialogLabel->text() + "\n\n"
+                             + name + " "
+                             + QByteArray::number(
+                                 QTime::currentTime().hour()) + ":"
+                             + QByteArray::number(
+                                 QTime::currentTime().minute()) + ":"
+                             + QByteArray::number(
+                                 QTime::currentTime().second()) + "\n"
+                             + MSG);
+        return true;
     }
     return false;
+}
+
+void User::receive_Datagramm()
+{
+    while (socket_In->hasPendingDatagrams())
+    {
+        QByteArray datagram;
+        datagram.resize(socket_In->pendingDatagramSize());
+        socket_In->readDatagram(datagram.data(), datagram.size());
+        __print << parse_message(datagram);
+    }
 }
 
 void User :: disconnect()
 {
     __print;
-    socket_Out->close();
     socket_In->close();
     connected = false;
-}
-
-void  User :: ping_server()
-{    
-    __print;
 }
 
 void User :: send_Datagramm()
 {
     __print;
-   if (msgText->toPlainText() != separator)
+   if (!msgText->toPlainText().contains(::separator))
    {
         QByteArray datagram = msgToUser + separator
                 + QByteArray(Name.toUtf8()) + separator
@@ -496,42 +409,26 @@ void User :: send_Datagramm()
 
         socket_Out->writeDatagram(datagram.data(), datagram.size(), AddressServer, PortServer);
         msgText->clear();
+        msgText->setText("Write message...");
+        return;
    }
    else
-       msgText->setText("LOL");
-       //QMessageBox *separatorMSG = new QMessageBox(this);
+   {
+       QMessageBox *separatorMSG = new QMessageBox(this);
+       separatorMSG->setText(tr("Name contains illegual symbol %1!")
+                             .arg(separator.data()));
+       separatorMSG->setIcon(QMessageBox::Warning);
+       separatorMSG->exec();
+       delete separatorMSG;
+   }
 }
 
-void  User :: receive_Datagramm()
-{
-    __print;
-    QByteArray datagram;
-    datagram.resize(socket_In->pendingDatagramSize());
-    socket_In->readDatagram(datagram.data(), datagram.size());
-    dialogLabel->setText(QString(datagram.data()));
-    parse_message(datagram);
 
-}
 
-void User :: errorRegistration()
-{
-    __print;
-    QMessageBox *msgBox = new QMessageBox(this);
 
-    timeRegistration->stop();
-    socket_In->close();
 
-    msgBox->setText("TimeOUT");
-    QPushButton *okButton = msgBox->addButton("OK", QMessageBox::ActionRole);
-    okButton->setFocusPolicy(Qt::StrongFocus);
-    msgBox->exec();
 
-    if (msgBox->clickedButton() == okButton)
-    {
-         delete inputDialog;
-         inputDialog = new QMessageBox(this);
-        connectToServer();
-    }
-    __print<<"HARD PISOS!"<<timeRegistration->isActive();
-    delete msgBox;
-}
+
+
+
+
