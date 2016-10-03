@@ -111,15 +111,28 @@ void User::initUser()
     inputDialog->setFixedSize(275,150);
     inputDialog->setWindowFlags(inputDialog->windowFlags() & ~Qt::WindowContextHelpButtonHint);
     inputDialog->setWindowFlags(inputDialog->windowFlags() & ~Qt::WindowCloseButtonHint);
+
     QLabel *nameLabel = new QLabel("Name",this);
+    nameLabel->setFont(QFont("Courier", 12, QFont::Bold));
+
     QLabel *point1Label = new QLabel(".",this);
+    point1Label->setFont(QFont("Courier", 11, QFont::Bold));
+
     QLabel *point2Label = new QLabel(".",this);
+    point2Label->setFont(QFont("Courier", 11, QFont::Bold));
+
     QLabel *point3Label = new QLabel(".",this);
+    point3Label->setFont(QFont("Courier", 11, QFont::Bold));
+
     QLabel *portLabel = new QLabel("Port",this);
+    portLabel->setFont(QFont("Courier", 12, QFont::Bold));
+
     QLabel *helloLabel = new QLabel("Hello",this);
     helloLabel->setFont(QFont("Courier", 16,QFont::Bold));
     helloLabel->setAlignment(Qt::AlignHCenter);
+
     QLabel *hostLabel = new QLabel("Host",this);
+    hostLabel->setFont(QFont("Courier", 12, QFont::Bold));
 
     QHBoxLayout *helloLayout = new QHBoxLayout;
     helloLayout->addWidget(helloLabel);
